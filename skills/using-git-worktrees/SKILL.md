@@ -99,6 +99,7 @@ Global directories (`~/.config/superpowers/worktrees/`) need no verification.
 #### Create the Worktree
 
 ```bash
+source_root=$(git rev-parse --show-toplevel)
 project=$(basename "$(git rev-parse --show-toplevel)")
 
 # Determine path based on chosen location
@@ -106,10 +107,21 @@ project=$(basename "$(git rev-parse --show-toplevel)")
 # For global: path="~/.config/superpowers/worktrees/$project/$BRANCH_NAME"
 
 git worktree add "$path" -b "$BRANCH_NAME"
+
+# Preserve local-only project configuration when present
+if [ -f "$source_root/vite.proxy.js" ]; then
+    cp "$source_root/vite.proxy.js" "$path/vite.proxy.js"
+fi
+if [ -f "$source_root/.env" ]; then
+    cp "$source_root/.env" "$path/.env"
+fi
+
 cd "$path"
 ```
 
 **Sandbox fallback:** If `git worktree add` fails with a permission error (sandbox denial), tell the user the sandbox blocked worktree creation and you're working in the current directory instead. Then run setup and baseline tests in place.
+
+**Local config copy:** Manual git worktrees do not copy untracked local config files. After creating a worktree with Step 1b, copy `vite.proxy.js` and `.env` when either source file exists. Do not create either file when the source file is absent.
 
 ## Step 3: Project Setup
 
@@ -117,7 +129,8 @@ Auto-detect and run appropriate setup:
 
 ```bash
 # Node.js
-if [ -f package.json ]; then npm install; fi
+if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile;
+elif [ -f package.json ]; then npm install; fi
 
 # Rust
 if [ -f Cargo.toml ]; then cargo build; fi
@@ -166,7 +179,10 @@ Ready to implement <feature-name>
 | Global path exists | Use it (backward compat) |
 | Directory not ignored | Add to .gitignore + commit |
 | Permission error on create | Sandbox fallback, work in place |
+| `vite.proxy.js` exists | Copy it into manual worktree |
+| `.env` exists | Copy it into manual worktree |
 | Tests fail during baseline | Report failures + ask |
+| `pnpm-lock.yaml` exists | Run `pnpm install --frozen-lockfile` |
 | No package.json/Cargo.toml | Skip dependency install |
 
 ## Common Mistakes
@@ -196,6 +212,16 @@ Ready to implement <feature-name>
 - **Problem:** Can't distinguish new bugs from pre-existing issues
 - **Fix:** Report failures, get explicit permission to proceed
 
+### Ignoring the package manager lockfile
+
+- **Problem:** Running `npm install` in a pnpm project mutates the wrong lockfile or installs with different resolution rules
+- **Fix:** If `pnpm-lock.yaml` exists, run `pnpm install --frozen-lockfile`
+
+### Forgetting local-only config
+
+- **Problem:** Manual git worktrees omit untracked local config, causing dev servers or API proxies to start with missing settings
+- **Fix:** After Step 1b creates the worktree, copy `vite.proxy.js` and `.env` when either source file exists
+
 ## Red Flags
 
 **Never:**
@@ -203,6 +229,8 @@ Ready to implement <feature-name>
 - Use `git worktree add` when you have a native worktree tool (e.g., `EnterWorktree`). This is the #1 mistake — if you have it, use it.
 - Skip Step 1a by jumping straight to Step 1b's git commands
 - Create worktree without verifying it's ignored (project-local)
+- Start project setup in a manual worktree before copying applicable local config
+- Run `npm install` when `pnpm-lock.yaml` exists
 - Skip baseline test verification
 - Proceed with failing tests without asking
 
@@ -211,5 +239,7 @@ Ready to implement <feature-name>
 - Prefer native tools over git fallback
 - Follow directory priority: existing > global legacy > instruction file > default
 - Verify directory is ignored for project-local
+- Copy applicable local config after manual worktree creation
 - Auto-detect and run project setup
+- Use `pnpm install --frozen-lockfile` when `pnpm-lock.yaml` exists
 - Verify clean test baseline
