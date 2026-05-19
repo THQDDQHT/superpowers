@@ -125,6 +125,23 @@ cd "$path"
 
 ## Step 3: Project Setup
 
+### 3a. Skip if dependencies are symlinked (native worktree path)
+
+**If Step 1a was used** (native worktree tool like `EnterWorktree`), the platform may have already symlinked dependency directories from the main repository (e.g. `node_modules` via Claude Code's `symlinkDirectories` setting). Check before installing:
+
+```bash
+# Check if key dependency directories are symlinks (already shared from main repo)
+if [ -L "node_modules" ]; then
+  echo "node_modules is symlinked — skipping dependency installation"
+fi
+```
+
+**If dependency directories exist as symlinks:** Skip to Step 4. Running install commands against symlinked `node_modules` is unnecessary and may break the symlink or cause duplicate work.
+
+**If no symlinks found, or Step 1b was used** (manual git worktree): Proceed with 3b.
+
+### 3b. Install dependencies
+
 Auto-detect and run appropriate setup:
 
 ```bash
@@ -182,6 +199,7 @@ Ready to implement <feature-name>
 | `vite.proxy.js` exists | Copy it into manual worktree |
 | `.env` exists | Copy it into manual worktree |
 | Tests fail during baseline | Report failures + ask |
+| Symlinked `node_modules` (Step 1a) | Skip install, go to Step 4 |
 | `pnpm-lock.yaml` exists | Run `pnpm install --frozen-lockfile` |
 | No package.json/Cargo.toml | Skip dependency install |
 
@@ -211,6 +229,11 @@ Ready to implement <feature-name>
 
 - **Problem:** Can't distinguish new bugs from pre-existing issues
 - **Fix:** Report failures, get explicit permission to proceed
+
+### Installing into a symlinked worktree
+
+- **Problem:** Running `npm install` when `node_modules` is a symlink from the main repo — wastes time, may break the symlink
+- **Fix:** Step 3a checks `[ -L "node_modules" ]` before installing. If symlinked, skip.
 
 ### Ignoring the package manager lockfile
 
