@@ -28,6 +28,12 @@ if exist "C:\Program Files (x86)\Git\bin\bash.exe" (
 )
 
 REM Try bash on PATH (e.g. user-installed Git Bash, MSYS2, Cygwin)
+REM Try custom Git location
+if exist "E:\Program\Git\Git\bin\bash.exe" (
+    "E:\Program\Git\Git\bin\bash.exe" "%HOOK_DIR%%~1" %2 %3 %4 %5 %6 %7 %8 %9
+    exit /b %ERRORLEVEL%
+)
+
 where bash >nul 2>nul
 if %ERRORLEVEL% equ 0 (
     bash "%HOOK_DIR%%~1" %2 %3 %4 %5 %6 %7 %8 %9
