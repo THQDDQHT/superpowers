@@ -6,9 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "./hooks/run-hook.cmd session-start",
-            "timeout": 60,
-            "statusMessage": "Loading Superpowers session hook"
+            "command": "\"${PLUGIN_ROOT}/hooks/run-hook.cmd\" session-start-codex",
+            "async": false
           }
         ]
       }
